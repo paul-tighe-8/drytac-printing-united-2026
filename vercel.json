@@ -2,6 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/thank-you", "destination": "/thank-you.html" }
+    {
+      "source": "/thank-you",
+      "destination": "/thank-you.html"
+    },
+    {
+      "source": "/emails",
+      "destination": "/emails/index.html"
+    }
   ]
 }
