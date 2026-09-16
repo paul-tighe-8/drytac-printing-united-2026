@@ -9,6 +9,10 @@
     {
       "source": "/emails",
       "destination": "/emails/index.html"
+    },
+    {
+      "source": "/emails/headers",
+      "destination": "/emails/headers-index.html"
     }
   ]
 }
