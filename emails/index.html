@@ -110,15 +110,15 @@ footer{margin-top:34px;color:var(--muted);font-size:14px}
     </div>
 
     <div class="actions">
-      <button data-file="drytac-email-1-thanks-for-visiting.html">Copy the HTML</button>
-      <a class="btn" href="drytac-email-1-thanks-for-visiting.html" target="_blank" rel="noopener">Open full size</a>
+      <button data-file="/emails/drytac-email-1-thanks-for-visiting.html">Copy the HTML</button>
+      <a class="btn" href="/emails/drytac-email-1-thanks-for-visiting.html" target="_blank" rel="noopener">Open full size</a>
     </div>
 
-    <iframe class="frame" src="drytac-email-1-thanks-for-visiting.html" title="Email 1 preview" loading="lazy"></iframe>
+    <iframe class="frame" src="/emails/drytac-email-1-thanks-for-visiting.html" title="Email 1 preview" loading="lazy"></iframe>
 
     <details>
       <summary>Show the HTML</summary>
-      <textarea readonly data-file="drytac-email-1-thanks-for-visiting.html" spellcheck="false">Loading…</textarea>
+      <textarea readonly data-file="/emails/drytac-email-1-thanks-for-visiting.html" spellcheck="false">Loading…</textarea>
     </details>
   </div>
 
@@ -162,15 +162,15 @@ footer{margin-top:34px;color:var(--muted);font-size:14px}
     </div>
 
     <div class="actions">
-      <button data-file="drytac-email-2-why-the-air-gets-out.html">Copy the HTML</button>
-      <a class="btn" href="drytac-email-2-why-the-air-gets-out.html" target="_blank" rel="noopener">Open full size</a>
+      <button data-file="/emails/drytac-email-2-why-the-air-gets-out.html">Copy the HTML</button>
+      <a class="btn" href="/emails/drytac-email-2-why-the-air-gets-out.html" target="_blank" rel="noopener">Open full size</a>
     </div>
 
-    <iframe class="frame" src="drytac-email-2-why-the-air-gets-out.html" title="Email 2 preview" loading="lazy"></iframe>
+    <iframe class="frame" src="/emails/drytac-email-2-why-the-air-gets-out.html" title="Email 2 preview" loading="lazy"></iframe>
 
     <details>
       <summary>Show the HTML</summary>
-      <textarea readonly data-file="drytac-email-2-why-the-air-gets-out.html" spellcheck="false">Loading…</textarea>
+      <textarea readonly data-file="/emails/drytac-email-2-why-the-air-gets-out.html" spellcheck="false">Loading…</textarea>
     </details>
   </div>
 
@@ -214,15 +214,15 @@ footer{margin-top:34px;color:var(--muted);font-size:14px}
     </div>
 
     <div class="actions">
-      <button data-file="drytac-email-3-winner-and-next-step.html">Copy the HTML</button>
-      <a class="btn" href="drytac-email-3-winner-and-next-step.html" target="_blank" rel="noopener">Open full size</a>
+      <button data-file="/emails/drytac-email-3-winner-and-next-step.html">Copy the HTML</button>
+      <a class="btn" href="/emails/drytac-email-3-winner-and-next-step.html" target="_blank" rel="noopener">Open full size</a>
     </div>
 
-    <iframe class="frame" src="drytac-email-3-winner-and-next-step.html" title="Email 3 preview" loading="lazy"></iframe>
+    <iframe class="frame" src="/emails/drytac-email-3-winner-and-next-step.html" title="Email 3 preview" loading="lazy"></iframe>
 
     <details>
       <summary>Show the HTML</summary>
-      <textarea readonly data-file="drytac-email-3-winner-and-next-step.html" spellcheck="false">Loading…</textarea>
+      <textarea readonly data-file="/emails/drytac-email-3-winner-and-next-step.html" spellcheck="false">Loading…</textarea>
     </details>
   </div>
 
@@ -276,20 +276,48 @@ footer{margin-top:34px;color:var(--muted);font-size:14px}
 
   // The email files themselves. Fetched from this same folder, so the
   // copied HTML is always exactly what is deployed.
-  var cache = {};
+  var cache = {};   // file -> promise
+  var text  = {};   // file -> string, once it has arrived
+
   function load(file) {
     if (cache[file]) { return cache[file]; }
-    cache[file] = fetch(file).then(function (r) {
+    cache[file] = fetch(file, { cache: 'no-store' }).then(function (r) {
       if (!r.ok) { throw new Error('HTTP ' + r.status); }
       return r.text();
-    });
+    }).then(function (html) { text[file] = html; return html; });
     return cache[file];
   }
 
+  // Warm every file as soon as the page loads, so a click copies straight
+  // from memory. Copying inside a .then() after fetch drops the browser's
+  // "user gesture" and Safari blocks the write.
+  Array.prototype.forEach.call(document.querySelectorAll('[data-file]'), function (el) {
+    load(el.getAttribute('data-file')).catch(function () {});
+  });
+
   Array.prototype.forEach.call(document.querySelectorAll('button[data-file]'), function (btn) {
     btn.addEventListener('click', function () {
+      var file = btn.getAttribute('data-file');
+
+      // Already in memory: copy in the same tick as the click.
+      if (text[file]) { copy(text[file], btn); return; }
+
+      // Still loading. Hand the clipboard the promise itself where that is
+      // supported, which keeps the gesture alive; otherwise wait and use
+      // the textarea path.
+      if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+        var item = new ClipboardItem({
+          'text/plain': load(file).then(function (html) {
+            return new Blob([html], { type: 'text/plain' });
+          })
+        });
+        navigator.clipboard.write([item]).then(function () { flash(btn, 'Copied'); },
+                                               function () { flash(btn, 'Try again'); });
+        return;
+      }
+
       btn.disabled = true;
-      load(btn.getAttribute('data-file')).then(function (html) {
+      load(file).then(function (html) {
         btn.disabled = false;
         copy(html, btn);
       }, function () {
